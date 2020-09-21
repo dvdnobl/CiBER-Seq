@@ -1,0 +1,61 @@
+library(tidyverse)
+library(DESeq2)
+
+## Reading in count tables, extracting RNA count columns
+his4_raw_counts <- read.delim("data/all_his4_moreseq_counts.txt")[,c(1,8,9,6,7)]
+
+pgk1_raw_counts <- read.delim("data/all_pgk1_moreseq_counts.txt")[,c(1,8,9,6,7)]
+
+## Changing column names
+colnames(his4_raw_counts)
+colnames(his4_raw_counts) <- c("barcode", "PreL", "PreR", "PostL", "PostR")
+
+colnames(pgk1_raw_counts)
+colnames(pgk1_raw_counts) <- c("barcode", "PreL", "PreR", "PostL", "PostR")
+
+head(his4_raw_counts)
+head(pgk1_raw_counts)
+
+## Creating meta table
+his4_meta <- data.frame("sampletype" = colnames(his4_raw_counts)[2:5],
+                        "guide_induction" = c("pre", "pre", "post", "post"))
+pgk1_meta <- data.frame("sampletype" = colnames(pgk1_raw_counts)[2:5],
+                        "guide_induction" = c("pre", "pre", "post", "post"))
+
+
+write.table(his4_meta, "meta/his4_meta.txt", sep="\t")
+write.table(pgk1_meta, "meta'pgk1_meta.txt", sep="\t")
+
+## Visualizing distribution of expression counts
+ggplot(his4_raw_counts) +
+  geom_histogram(aes(x=PostL), stat="bin", bins=200) +
+  xlab("Raw expression counts") +
+  ylab("Number of genes")
+
+## Visualizing mean vs. variance in data
+his4_mean_counts <- apply(his4_raw_counts[,4:5], 1, mean)
+his4_var_counts <- apply(his4_raw_counts[,4:5], 1, var)
+
+his4_mean_vs_var <- data.frame(his4_mean_counts, his4_var_counts)
+
+pgk1_mean_counts <- apply(pgk1_raw_counts[,4:5], 1, mean)
+pgk1_var_counts <- apply(pgk1_raw_counts[,4:5], 1, var)
+
+pgk1_mean_vs_var <- data.frame(pgk1_mean_counts, pgk1_var_counts)
+
+ggplot(his4_mean_vs_var) +
+  geom_point(aes(x=his4_mean_counts, y=his4_var_counts)) +
+  geom_line(aes(x=his4_mean_counts, y=his4_mean_counts), color="blue") +
+  scale_y_log10() +
+  scale_x_log10()
+
+ggplot(pgk1_mean_vs_var) +
+  geom_point(aes(x=pgk1_mean_counts, y=pgk1_var_counts)) +
+  geom_line(aes(x=pgk1_mean_counts, y=pgk1_mean_counts), color="green") +
+  scale_y_log10() +
+  scale_x_log10()
+
+
+
+
+

@@ -1,0 +1,32 @@
+{
+    "id": "CF11B4D9",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1598313612541.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "expression": "his4_raw_counts",
+        "caption": "his4_raw_counts",
+        "totalObservations": 625102,
+        "displayedObservations": 625102,
+        "variables": 5,
+        "cacheKey": "639F94D7",
+        "object": "his4_raw_counts",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=his4_raw_counts&cache_key=639F94D7&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 2019032054083551248,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1598313612541,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,5 @@
+"sampletype"	"guide_induction"
+"1"	"PreL"	"pre"
+"2"	"PreR"	"pre"
+"3"	"PostL"	"post"
+"4"	"PostR"	"post"
