@@ -31,8 +31,8 @@ row.names(pgk1_meta) <- pgk1_meta$sampletype
 pgk1_meta <- pgk1_meta[,2:3]
 
 
-#write.table(his4_meta, "meta/his4_meta.txt", sep="\t")
-#write.table(pgk1_meta, "meta'pgk1_meta.txt", sep="\t")
+write.table(his4_meta, "meta/his4_meta.txt", sep="\t")
+write.table(pgk1_meta, "meta/pgk1_meta.txt", sep="\t")
 
 
 ## Visualizing distribution of expression counts
@@ -112,5 +112,79 @@ head(rld_cor_pgk1)
 
 pheatmap(rld_cor_his4)
 pheatmap(rld_cor_pgk1)
+
+
+## Uploading barcode to guide matching data, number No_gRNA entries
+barcode_guide <- read.delim('data/grna-assign-barcode-grna-good.txt')
+barcode_guide$guide[barcode_guide$guide == "No_gRNA"] <- paste("No_gRNA", seq(1:788), sep=" ")
+
+
+## Attaching guide info into count data sets
+## Filtering out rows without guide, file size too large
+his4_guide_counts <- inner_join(his4_raw_counts, barcode_guide, by=c("barcode"))
+head(his4_guide_counts)
+dim(his4_guide_counts)
+
+pgk1_guide_counts <- inner_join(pgk1_raw_counts, barcode_guide, by=c("barcode"))
+head(pgk1_guide_counts)
+dim(pgk1_guide_counts)
+
+## Aggregating counts by guide
+his4_agg <- aggregate(his4_guide_counts[,c(2,3,4,5)], by=list(his4_guide_counts$guide), FUN=sum)
+names(his4_agg)[1] <- "guide"
+head(his4_agg)
+dim(his4_agg)
+
+pgk1_agg <- aggregate(pgk1_guide_counts[,c(2,3,4,5)], by=list(pgk1_guide_counts$guide), FUN=sum)
+names(pgk1_agg)[1] <- "guide"
+head(pgk1_agg)
+dim(pgk1_agg)
+
+
+## Creating count matrix with entries from his4 and pgk1 matched by guide
+his4_pgk1 <- inner_join(his4_agg, pgk1_agg, by=c("guide"), suffix=c(".his4", ".pgk1"))
+head(his4_pgk1)
+dim(his4_pgk1)
+
+his4_pgk1_meta <- data.frame("sampletype" = colnames(his4_pgk1)[2:9], 
+                             "guide_induction" = c("Pre", "Pre", "Post", "Post", 
+                                                   "Pre", "Pre", "Post", "Post"),
+                             "turb" = c("L", "R", "L", "R", "L", "R", "L", "R"),
+                             "geno" = c("his4", "his4", "his4", "his4", "pgk1",
+                                        "pgk1","pgk1","pgk1"))
+rownames(his4_pgk1_meta) <- his4_pgk1_meta$sampletype
+his4_pgk1_meta <- his4_pgk1_meta[,c(2,3,4)]
+
+write.table(his4_pgk1_meta, "meta/his4_pgk1_meta.txt", sep="\t")
+
+## Creating count matrix
+his4_pgk1_mtx = his4_pgk1[,2:9]
+
+## Creating DESeq object
+dds_his4_pgk1 <- DESeqDataSetFromMatrix(countData = his4_pgk1_mtx, colData = his4_pgk1_meta, 
+                                        design = ~ guide_induction + geno)
+
+## Taking log2 transformation of counts for visualization
+rld_his4_pgk1 <- vst(dds_his4_pgk1, blind=TRUE)
+
+## Plotting PCA 
+plotPCA(rld_his4_pgk1, intgroup="guide_induction")
+plotPCA(rld_his4_pgk1, intgroup="turb")
+plotPCA(rld_his4_pgk1, intgroup="geno")
+
+## Further PCA analysis
+rld_mat_his4_pgk1 <- assay(rld_his4_pgk1)
+
+pca_his4_pgk1 <- prcomp(t(rld_mat_his4_pgk1))
+summary(pca_his4_pgk1)
+
+pca_his4_pgk1_df <- cbind(his4_pgk1_meta, pca_his4_pgk1$x)
+ggplot(pca_his4_pgk1_df) + geom_point(aes(x=PC1, y=PC2, color = geno))
+
+
+
+
+
+
 
 
