@@ -183,8 +183,57 @@ ggplot(pca_his4_pgk1_df) + geom_point(aes(x=PC1, y=PC2, color = geno))
 
 
 
+## Trying DESeq2 on counts by barcode, not guide
+his4_pgk1_b <- full_join(his4_raw_counts, pgk1_raw_counts, by='barcode', 
+                         suffix = c('.his4', '.pgk1'))
+his4_pgk1_b_filt <- dplyr::filter(his4_pgk1_b,
+                              PreL.his4 > 31, PreR.his4 > 31, PreL.pgk1 > 31, PreR.pgk1 > 31)
+
+his4_pgk1_b_filt[is.na(his4_pgk1_b_filt)] <- 0
+dim(his4_pgk1_b_filt)
+
+write.table(his4_pgk1_b_filt, "data/his4_pgk1_barcode_filt.txt", sep="\t")
+
+his4_pgk1_b_mtx <- his4_pgk1_b_filt[,2:9]
+
+dds_his4_pgk1_b <- DESeqDataSetFromMatrix(countData = his4_pgk1_b_mtx,
+                                          colData = his4_pgk1_meta,
+                                          design = ~ guide_induction * geno + turb)
+dds_his4_pgk1_b <- DESeq(dds_his4_pgk1_b)
+
+## Plotting dispersion estimates
+plotDispEsts(dds_his4_pgk1_b)
+
+## Creating results dataframe for pre vs post guide induction
+resultsNames(dds_his4_pgk1_b)
+results_atc <- results(dds_his4_pgk1_b, name = 'guide_induction_Pre_vs_Post',
+                        alpha = 0.05)
+
+res_table_atc <- as.data.frame(results_atc)
+
+res_table_atc$barcode <- his4_pgk1_b_filt$barcode
+res_table_atc$guide <- grna.assign.barcode.grna.good[match(res_table_atc$barcode,
+                                                           grna.assign.barcode.grna.good$barcode),
+                                                     "guide"]
+res_table_atc <- res_table_atc[,c(8,7,1,2,3,4,5,6)]
+
+write.table(res_table_atc, "results/deseq2_results_barcode.txt",
+            sep="\t")
+
+plotMA(results_atc_unshrunken)
 
 
 
+## Looking at significant results
+sig_barcodes <- res_table_atc[res_table_atc$padj <= .05,]
+dim(sig_barcodes)  
+dim(res_table_atc)
 
+res_valid_guides <- drop_na(res_table_atc, guide)
+res_valid_guides <- res_valid_guides[order(res_valid_guides$guide),]
 
+write.table(res_valid_guides, "results/deseq2_results_guides.txt",
+            sep="\t")
+
+dim(res_valid_guides)
+length(unique(res_valid_guides$guide))
