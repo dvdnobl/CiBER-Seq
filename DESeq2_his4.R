@@ -146,12 +146,15 @@ his4_pgk1 <- inner_join(his4_agg, pgk1_agg, by=c("guide"), suffix=c(".his4", ".p
 head(his4_pgk1)
 dim(his4_pgk1)
 
+
 his4_pgk1_meta <- data.frame("sampletype" = colnames(his4_pgk1)[2:9], 
-                             "guide_induction" = c("Pre", "Pre", "Post", "Post", 
+                             "guide_induction" = factor(c("Pre", "Pre", "Post", "Post", 
                                                    "Pre", "Pre", "Post", "Post"),
-                             "turb" = c("L", "R", "L", "R", "L", "R", "L", "R"),
-                             "geno" = c("his4", "his4", "his4", "his4", "pgk1",
-                                        "pgk1","pgk1","pgk1"))
+                                                   levels = c("Pre", "Post")),
+                             "turb" = factor(c("L", "R", "L", "R", "L", "R", "L", "R"),
+                                              levels = c("L", "R")),
+                             "geno" = factor(c("his4", "his4", "his4", "his4", "pgk1",
+                                        "pgk1","pgk1","pgk1"), levels=c('pgk1', 'his4')))
 rownames(his4_pgk1_meta) <- his4_pgk1_meta$sampletype
 his4_pgk1_meta <- his4_pgk1_meta[,c(2,3,4)]
 
@@ -206,22 +209,37 @@ plotDispEsts(dds_his4_pgk1_b)
 
 ## Creating results dataframe for pre vs post guide induction
 resultsNames(dds_his4_pgk1_b)
-results_atc <- results(dds_his4_pgk1_b, name = 'guide_induction_Pre_vs_Post',
+results_atc <- results(dds_his4_pgk1_b, name = 'guide_induction_Post_vs_Pre',
                         alpha = 0.05)
 
+results_geno <- results(dds_his4_pgk1_b, name = 'guide_inductionPost.genohis4')
+
 res_table_atc <- as.data.frame(results_atc)
+
+res_table_geno <- as.data.frame(results_geno)
 
 res_table_atc$barcode <- his4_pgk1_b_filt$barcode
 res_table_atc$guide <- grna.assign.barcode.grna.good[match(res_table_atc$barcode,
                                                            grna.assign.barcode.grna.good$barcode),
                                                      "guide"]
+
+res_table_geno$barcode <- his4_pgk1_b_filt$barcode
+res_table_geno$guide <- grna.assign.barcode.grna.good[match(res_table_geno$barcode,
+                                                           grna.assign.barcode.grna.good$barcode),
+                                                     "guide"]
 res_table_atc <- res_table_atc[,c(8,7,1,2,3,4,5,6)]
+
+res_table_atc <- res_table_geno[,c(8,7,1,2,3,4,5,6)]
 
 write.table(res_table_atc, "results/deseq2_results_barcode.txt",
             sep="\t")
 
+write.table(res_table_geno, "results/deseq2_results_geno.txt",
+            sep="\t")
+
 plotMA(results_atc_unshrunken)
 
+plotMA(results_geno, ylim=c(-4,4))
 
 
 ## Looking at significant results
