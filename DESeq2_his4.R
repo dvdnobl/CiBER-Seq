@@ -2,6 +2,8 @@ library(tidyverse)
 library(DESeq2)
 library(pheatmap)
 
+library(metaRNASeq)
+
 ## Reading in count tables, extracting RNA count columns
 his4_raw_counts <- read.delim("data/all_his4_moreseq_counts.txt")[,c(1,8,9,6,7)]
 
@@ -165,7 +167,7 @@ his4_pgk1_mtx = his4_pgk1[,2:9]
 
 ## Creating DESeq object
 dds_his4_pgk1 <- DESeqDataSetFromMatrix(countData = his4_pgk1_mtx, colData = his4_pgk1_meta, 
-                                        design = ~ guide_induction + geno)
+                                        design = ~ guide_induction * geno + turb)
 
 ## Taking log2 transformation of counts for visualization
 rld_his4_pgk1 <- vst(dds_his4_pgk1, blind=TRUE)
@@ -229,9 +231,9 @@ res_table_geno$guide <- grna.assign.barcode.grna.good[match(res_table_geno$barco
                                                      "guide"]
 res_table_atc <- res_table_atc[,c(8,7,1,2,3,4,5,6)]
 
-res_table_atc <- res_table_geno[,c(8,7,1,2,3,4,5,6)]
+res_table_geno <- res_table_geno[,c(8,7,1,2,3,4,5,6)]
 
-write.table(res_table_atc, "results/deseq2_results_barcode.txt",
+write.table(res_table_atc, "results/deseq2_results_atc.txt",
             sep="\t")
 
 write.table(res_table_geno, "results/deseq2_results_geno.txt",
@@ -243,15 +245,49 @@ plotMA(results_geno, ylim=c(-4,4))
 
 
 ## Looking at significant results
-sig_barcodes <- res_table_atc[res_table_atc$padj <= .05,]
+sig_barcodes <- res_table_geno[res_table_geno$padj <= .1,]
 dim(sig_barcodes)  
 dim(res_table_atc)
 
-res_valid_guides <- drop_na(res_table_atc, guide)
+res_valid_guides <- drop_na(res_table_geno, guide)
 res_valid_guides <- res_valid_guides[order(res_valid_guides$guide),]
 
-write.table(res_valid_guides, "results/deseq2_results_guides.txt",
+write.table(res_valid_guides, "results/deseq2_results_geno_guides.txt",
             sep="\t")
 
 dim(res_valid_guides)
 length(unique(res_valid_guides$guide))
+
+## Adding yorf info onto result table
+res_yorf <- merge(res_valid_guides, guide.good.targets[,c(1,3)], by.x = 'guide',
+                  by.y = 'Guide')
+res_yorf <- drop_na(res_yorf, Yorf1)
+colnames(res_yorf)[9] <- 'gene'
+
+## Creating a new dataframe with combined p-values using Fisher's method
+res_combined <- data.frame(gene = unique(res_yorf$gene))          
+
+combined_p_vals <- c()
+avg_log2fc <- c()
+for (orf in res_combined$gene) {
+  v <- res_yorf[res_yorf$gene == orf,]
+  f_method <- fishercomb(v[,8])$adjpval
+  combined_p_vals <- c(combined_p_vals, f_method)
+  avg_log2fc <- c(avg_log2fc, mean(v[,4]))
+}
+
+res_combined$avg_log2fc <- avg_log2fc
+res_combined$comb_adjpval <- combined_p_vals
+
+res_combined_sig <- res_combined[res_combined$comb_adjpval <= .05,]
+
+write.table(res_combined, 'results/res_combined_p.txt', sep='\t')
+write.table(res_combined_sig, 'results/res_combined_p_sig.txt', sep='\t')
+
+
+## Comparing result tables to see if genes were found to be DE with F's method
+
+res_uncombined <- data.frame(gene = unique(res_yorf$gene))
+min_pval <- c()
+for (orf in res_combined$gene)
+
