@@ -9,6 +9,7 @@ his4_raw_counts <- read.delim("data/all_his4_moreseq_counts.txt")[,c(1,8,9,6,7)]
 
 pgk1_raw_counts <- read.delim("data/all_pgk1_moreseq_counts.txt")[,c(1,8,9,6,7)]
 
+
 ## Changing column names
 colnames(his4_raw_counts)
 colnames(his4_raw_counts) <- c("barcode", "PreL", "PreR", "PostL", "PostR")
@@ -33,8 +34,8 @@ row.names(pgk1_meta) <- pgk1_meta$sampletype
 pgk1_meta <- pgk1_meta[,2:3]
 
 
-write.table(his4_meta, "meta/his4_meta.txt", sep="\t")
-write.table(pgk1_meta, "meta/pgk1_meta.txt", sep="\t")
+#write.table(his4_meta, "meta/his4_meta.txt", sep="\t")
+#write.table(pgk1_meta, "meta/pgk1_meta.txt", sep="\t")
 
 
 ## Visualizing distribution of expression counts
@@ -43,28 +44,8 @@ ggplot(his4_raw_counts) +
   xlab("Raw expression counts") +
   ylab("Number of genes")
 
-## Visualizing mean vs. variance in data
-his4_mean_counts <- apply(his4_raw_counts[,4:5], 1, mean)
-his4_var_counts <- apply(his4_raw_counts[,4:5], 1, var)
+sum(his4_raw_counts$PostL == 0) / length(his4_raw_counts$PostL)
 
-his4_mean_vs_var <- data.frame(his4_mean_counts, his4_var_counts)
-
-pgk1_mean_counts <- apply(pgk1_raw_counts[,4:5], 1, mean)
-pgk1_var_counts <- apply(pgk1_raw_counts[,4:5], 1, var)
-
-pgk1_mean_vs_var <- data.frame(pgk1_mean_counts, pgk1_var_counts)
-
-ggplot(his4_mean_vs_var) +
-  geom_point(aes(x=his4_mean_counts, y=his4_var_counts)) +
-  geom_line(aes(x=his4_mean_counts, y=his4_mean_counts), color="blue") +
-  scale_y_log10() +
-  scale_x_log10()
-
-ggplot(pgk1_mean_vs_var) +
-  geom_point(aes(x=pgk1_mean_counts, y=pgk1_var_counts)) +
-  geom_line(aes(x=pgk1_mean_counts, y=pgk1_mean_counts), color="green") +
-  scale_y_log10() +
-  scale_x_log10()
 
 
 ## Creating count matrices
@@ -120,6 +101,9 @@ pheatmap(rld_cor_pgk1)
 barcode_guide <- read.delim('data/grna-assign-barcode-grna-good.txt')
 barcode_guide$guide[barcode_guide$guide == "No_gRNA"] <- paste("No_gRNA", seq(1:788), sep=" ")
 
+length(unique(barcode_guide$guide))
+length(unique(guide.good.targets$Guide))
+length(unique(his4_raw_counts$barcode))
 
 ## Attaching guide info into count data sets
 ## Filtering out rows without guide, file size too large
@@ -153,10 +137,11 @@ his4_pgk1_meta <- data.frame("sampletype" = colnames(his4_pgk1)[2:9],
                              "guide_induction" = factor(c("Pre", "Pre", "Post", "Post", 
                                                    "Pre", "Pre", "Post", "Post"),
                                                    levels = c("Pre", "Post")),
-                             "turb" = factor(c("L", "R", "L", "R", "L", "R", "L", "R"),
+                             "replicate" = factor(c("L", "R", "L", "R", "L", "R", "L", "R"),
                                               levels = c("L", "R")),
                              "geno" = factor(c("his4", "his4", "his4", "his4", "pgk1",
                                         "pgk1","pgk1","pgk1"), levels=c('pgk1', 'his4')))
+
 rownames(his4_pgk1_meta) <- his4_pgk1_meta$sampletype
 his4_pgk1_meta <- his4_pgk1_meta[,c(2,3,4)]
 
@@ -167,7 +152,7 @@ his4_pgk1_mtx = his4_pgk1[,2:9]
 
 ## Creating DESeq object
 dds_his4_pgk1 <- DESeqDataSetFromMatrix(countData = his4_pgk1_mtx, colData = his4_pgk1_meta, 
-                                        design = ~ guide_induction * geno + turb)
+                                        design = ~ guide_induction * geno + replicate)
 
 ## Taking log2 transformation of counts for visualization
 rld_his4_pgk1 <- vst(dds_his4_pgk1, blind=TRUE)
@@ -194,6 +179,40 @@ his4_pgk1_b <- full_join(his4_raw_counts, pgk1_raw_counts, by='barcode',
 his4_pgk1_b_filt <- dplyr::filter(his4_pgk1_b,
                               PreL.his4 > 31, PreR.his4 > 31, PreL.pgk1 > 31, PreR.pgk1 > 31)
 
+## Recreating histogram of distribution of counts after filtering
+ggplot(his4_pgk1_b_filt) +
+  geom_histogram(aes(x=PostL.his4), stat="bin", bins=200) +
+  xlab("Raw expression counts") +
+  ylab("Number of guides")
+
+## Recreating mean vs. variance plots after filtering
+
+his4_filt_mean <- apply(his4_pgk1_b_filt[,2:5], 1, mean)
+his4_filt_var <- apply(his4_pgk1_b_filt[,2:5], 1, var)
+
+pgk1_filt_mean <- apply(his4_pgk1_b_filt[,6:9], 1, mean)
+pgk1_filt_var <- apply(his4_pgk1_b_filt[,6:9], 1, var)
+
+his4_filt_mean_vs_var <- data.frame(his4_filt_mean, his4_filt_var)
+pgk1_filt_mean_vs_var <- data.frame(pgk1_filt_mean, pgk1_filt_var)
+
+ggplot(data=his4_filt_mean_vs_var, aes(x=his4_filt_mean, y=his4_filt_var)) +
+  geom_point(size=0.2) +
+  geom_smooth(method='lm', formula=y~x, color='red') +
+  geom_line(aes(x=his4_filt_mean, y=his4_filt_mean), color="blue") + 
+  scale_y_log10() +
+  scale_x_log10()
+
+ggplot(data=pgk1_filt_mean_vs_var, aes(x=pgk1_filt_mean, y=pgk1_filt_var)) +
+  geom_point(size=0.2) +
+  geom_smooth(method='lm', formula=y~x, color="red") +
+  geom_line(aes(x=pgk1_filt_mean, y=pgk1_filt_mean), color="blue") + 
+  scale_y_log10() +
+  scale_x_log10() 
+
+
+## Creating DESeq object
+
 his4_pgk1_b_filt[is.na(his4_pgk1_b_filt)] <- 0
 dim(his4_pgk1_b_filt)
 
@@ -203,18 +222,22 @@ his4_pgk1_b_mtx <- his4_pgk1_b_filt[,2:9]
 
 dds_his4_pgk1_b <- DESeqDataSetFromMatrix(countData = his4_pgk1_b_mtx,
                                           colData = his4_pgk1_meta,
-                                          design = ~ guide_induction * geno + turb)
+                                          design = ~ geno * guide_induction + replicate)
 dds_his4_pgk1_b <- DESeq(dds_his4_pgk1_b)
 
 ## Plotting dispersion estimates
 plotDispEsts(dds_his4_pgk1_b)
+
+
+
 
 ## Creating results dataframe for pre vs post guide induction
 resultsNames(dds_his4_pgk1_b)
 results_atc <- results(dds_his4_pgk1_b, name = 'guide_induction_Post_vs_Pre',
                         alpha = 0.05)
 
-results_geno <- results(dds_his4_pgk1_b, name = 'guide_inductionPost.genohis4')
+results_geno <- results(dds_his4_pgk1_b, name = 'genohis4.guide_inductionPost',
+                        alpha = 0.05)
 
 res_table_atc <- as.data.frame(results_atc)
 
@@ -226,68 +249,30 @@ res_table_atc$guide <- grna.assign.barcode.grna.good[match(res_table_atc$barcode
                                                      "guide"]
 
 res_table_geno$barcode <- his4_pgk1_b_filt$barcode
-res_table_geno$guide <- grna.assign.barcode.grna.good[match(res_table_geno$barcode,
-                                                           grna.assign.barcode.grna.good$barcode),
+res_table_geno$guide <- barcode_guide[match(res_table_geno$barcode,
+                                                           barcode_guide$barcode),
                                                      "guide"]
 res_table_atc <- res_table_atc[,c(8,7,1,2,3,4,5,6)]
 
 res_table_geno <- res_table_geno[,c(8,7,1,2,3,4,5,6)]
 
-write.table(res_table_atc, "results/deseq2_results_atc.txt",
-            sep="\t")
+#write.table(res_table_atc, "results/deseq2_results_atc.txt",
+#            sep="\t")
 
 write.table(res_table_geno, "results/deseq2_results_geno.txt",
             sep="\t")
 
-plotMA(results_atc_unshrunken)
 
-plotMA(results_geno, ylim=c(-4,4))
+plotMA(results_geno, ylim=c(-8,8))
 
-
-## Looking at significant results
-sig_barcodes <- res_table_geno[res_table_geno$padj <= .1,]
-dim(sig_barcodes)  
-dim(res_table_atc)
-
-res_valid_guides <- drop_na(res_table_geno, guide)
-res_valid_guides <- res_valid_guides[order(res_valid_guides$guide),]
-
-write.table(res_valid_guides, "results/deseq2_results_geno_guides.txt",
-            sep="\t")
-
-dim(res_valid_guides)
-length(unique(res_valid_guides$guide))
-
-## Adding yorf info onto result table
-res_yorf <- merge(res_valid_guides, guide.good.targets[,c(1,3)], by.x = 'guide',
-                  by.y = 'Guide')
-res_yorf <- drop_na(res_yorf, Yorf1)
-colnames(res_yorf)[9] <- 'gene'
-
-## Creating a new dataframe with combined p-values using Fisher's method
-res_combined <- data.frame(gene = unique(res_yorf$gene))          
-
-combined_p_vals <- c()
-avg_log2fc <- c()
-for (orf in res_combined$gene) {
-  v <- res_yorf[res_yorf$gene == orf,]
-  f_method <- fishercomb(v[,8])$adjpval
-  combined_p_vals <- c(combined_p_vals, f_method)
-  avg_log2fc <- c(avg_log2fc, mean(v[,4]))
-}
-
-res_combined$avg_log2fc <- avg_log2fc
-res_combined$comb_adjpval <- combined_p_vals
-
-res_combined_sig <- res_combined[res_combined$comb_adjpval <= .05,]
-
-write.table(res_combined, 'results/res_combined_p.txt', sep='\t')
-write.table(res_combined_sig, 'results/res_combined_p_sig.txt', sep='\t')
+res_table_geno_sig <- res_table_geno[res_table_geno$padj <= .05,]
 
 
-## Comparing result tables to see if genes were found to be DE with F's method
+# Results for shrunken LFC
+coefs = coef(dds_his4_pgk1_b)
+shrunk_res = lfcShrink(dds_his4_pgk1_b, coef='genohis4.guide_inductionPost', res=results_geno)
 
-res_uncombined <- data.frame(gene = unique(res_yorf$gene))
-min_pval <- c()
-for (orf in res_combined$gene)
+plotMA(shrunk_res)
+
+
 
