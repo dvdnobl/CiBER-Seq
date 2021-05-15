@@ -1,5 +1,5 @@
 # CiBER-Seq
-Code to explore a powerful data analysis for finding guides which induce significant differential expression in CiBER-Seq.
+Code to reproduce data analysis for identifying guides which cause significant differential expression in CiBER-Seq.
 
  - Data from the CiBER-Seq screen is put in the "data" directory. 
 
@@ -8,3 +8,15 @@ Code to explore a powerful data analysis for finding guides which induce signifi
  - Plots generated from EDA, QC, and DESeq2 are put in the "plots" directory.
 
  - Code for EDA, QC, and running DESeq2 is saved as the "DESeq2_his4.R" file.
+
+ - Code used for meta-analysis is in "meta-analysis.R"
+
+R version 4.0.5 is required.
+
+Require dependencies (latest version for all):
+ - tidyverse
+ - metaRNAseq
+ - metap
+ - DESeq2
+ - pheatmap
+ - metaRNASeq
