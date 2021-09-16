@@ -20,3 +20,7 @@ Require dependencies (latest version for all):
  - DESeq2
  - pheatmap
  - metaRNASeq
+
+Paper outlining the theory and protocol for CiBER-Seq can be found here: https://www.science.org/doi/10.1126/science.abb9662
+
+![370_abb9662_fa](https://user-images.githubusercontent.com/49042863/133697211-6f69f274-5f5c-468c-8998-69ae6ef37ebe.jpeg)
